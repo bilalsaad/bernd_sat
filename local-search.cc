@@ -9,7 +9,8 @@ namespace {
     ass[random_index] = !ass[random_index];
   }
 }  // namespace
-  VariableAssignment LocalSearch(const CNFFormula& cnf_formula, int max_steps) {
+  VariableAssignment LocalSearch(const CNFFormula& cnf_formula, int max_steps,
+      bool verbose) {
     auto result = RandomVariableAssignment(cnf_formula.NumVars());
     //VariableAssignment result(cnf_formula.NumVars(), false);
     auto temp_result = result;
@@ -27,8 +28,10 @@ namespace {
       flip_variable(temp_result);
     }
     auto final_score = best_val.first;
-    std::cout << "First score: " << first_score << std::endl;
-    std::cout << "Final score: " << final_score << std::endl;
+    if (verbose) {
+      std::cout << "First score: " << first_score << std::endl;
+      std::cout << "Final score: " << final_score << std::endl;
+    }
     return result;
   }
 
@@ -50,13 +53,11 @@ namespace {
            ass_i_true : ass_i_false;
   }
 
-
-  VariableAssignment BruteForce(const CNFFormula& cnf_formula) {
-    VariableAssignment res;
-    brute_force_helper(res, cnf_formula, 0);
-    return res;
-  }
 }  // namespace
+  VariableAssignment BruteForce(const CNFFormula& cnf_formula) {
+    VariableAssignment res(cnf_formula.NumVars(), false);
+    return brute_force_helper(res, cnf_formula, 0);
+  }
 
 
 }  // namespace CNF

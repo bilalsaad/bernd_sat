@@ -3,7 +3,7 @@
 #include <vector>
 #include <functional>
 #include <ostream>
-
+#include <experimental/optional>
 namespace CNF {
 struct CNFLiteral {
   bool is_complement;
@@ -18,15 +18,17 @@ struct CNFClause {
 };
 std::ostream& operator<<(std::ostream& os, const CNFClause& c);
 
-std::vector<CNFClause> build_random_clauses(int num_vars, int num_clauses);
+std::vector<CNFClause> build_random_clauses(int num_vars, int num_clauses,
+    std::experimental::optional<int> seed = {});
 
 using VariableAssignment = std::vector<bool>;
 
 
 class CNFFormula {
   public:
-    CNFFormula(int num_vars, int num_clauses):num_vars(num_vars),
-    clauses(build_random_clauses(num_vars, num_clauses)) {}
+    CNFFormula(int num_vars, int num_clauses,
+        std::experimental::optional<int> seed = {}):num_vars(num_vars),
+    clauses(build_random_clauses(num_vars, num_clauses, seed)) {}
     std::pair<long, bool> AssignmentWeight(const VariableAssignment& ass) const;
     friend std::ostream& operator<<(std::ostream& os, const CNFFormula& cnf);
     int NumVars() const {return num_vars;}

@@ -31,16 +31,18 @@ namespace CNF {
                            });
     return {weight_and_num.first, weight_and_num.second == clauses.size()};
   }
+  
+  using std::experimental::optional;
 
   namespace {
-    CNFClause random_CNS_clause(int num_vars) {
+    CNFClause random_CNS_clause(int num_vars, optional<int> seed) {
       CNFClause result;
      do { 
       for (int var_id = 0; var_id < num_vars; ++var_id) {
         // Roll a dice to decide if to take this variable.
-        if (util::random_real() < 0.5) {
+        if (util::random_real(seed) < 0.5) {
           // Roll a dice to decide if to take this variable or its complement.
-          result.vars.emplace_back(var_id, util::random_real() < 0.5);
+          result.vars.emplace_back(var_id, util::random_real(seed) < 0.5);
         }
       }
      } while (result.vars.size() == 0);
@@ -48,10 +50,11 @@ namespace CNF {
     }
 
   }  // namespace
-  std::vector<CNFClause> build_random_clauses(int num_vars, int num_clauses) {
+  std::vector<CNFClause> build_random_clauses(int num_vars, int num_clauses,
+      optional<int> seed) {
     std::vector<CNFClause> result(num_clauses);
     std::generate(std::begin(result), std::end(result),
-        [&num_vars] () {return random_CNS_clause(num_vars);});
+        [&num_vars, seed] () {return random_CNS_clause(num_vars, seed);});
     return result;
   }
 

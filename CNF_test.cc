@@ -3,10 +3,32 @@
 #include <iostream>
 
 using namespace CNF;
+using std::experimental::optional;
+
+void init(int argc, char** argv) {
+  util::add_int_flag("n_clauses", "number of CNF clauses", 5);
+  util::add_int_flag("n_vars", "number of CNF variables", 10);
+  util::add_int_flag("local_steps", "steps for local search ", 50);
+  util::add_bool_flag("verbose", "print the CNF formula", false);
+  util::add_int_flag("seed", "a random seed to reproduce cnf formulas", 1337);
+  util::add_bool_flag("use_seed", "use seed ", false);
+  util::parse_flags(argc, argv);
+}
+
 int main(int argc, char** argv) {
-  CNFFormula f(argc > 1 ? std::stoi(*(argv+1)) : 10,
-               argc > 2 ? std::stoi(*(argv+2)) : 5);
-  auto ass = RandomVariableAssignment(f.NumVars());
-  auto ass2 = LocalSearch(f, 40);
+  init(argc, argv);
+  CNFFormula f(util::get_int_flag("n_vars"), util::get_int_flag("n_clauses"),
+      util::get_bool_flag("use_seed") ?
+      optional<int>(util::get_int_flag("seed")) :
+        optional<int>());
+  auto ass2 = LocalSearch(f, util::get_int_flag("local_steps"));
+  auto ass3 = BruteForce(f);
+  if (util::get_bool_flag("verbose")) {
+    std::cout << "cnf formula: \n" << f;
+    PrintAssignment(std::cout << "Bruteforce ", ass3, ass3.size());
+    PrintAssignment(std::cout << "LocalSearch ", ass2, ass2.size());
+  }
+  std::cout << "bruteforce: " << f.AssignmentWeight(ass3).first << std::endl;
+  std::cout << "local: " << f.AssignmentWeight(ass2).first << std::endl;
   return 0;
 }
