@@ -1,18 +1,20 @@
+#ifndef  __CNF_H__
+#define __CNF_H__
 #include <vector>
 #include <functional>
 #include <ostream>
 
 namespace CNF {
-struct CNFVariable {
+struct CNFLiteral {
   bool is_complement;
   int id;
-  CNFVariable(int id, bool is_complement): id(id), is_complement(is_complement)
+  CNFLiteral(int id, bool is_complement): id(id), is_complement(is_complement)
   {}
 };
-std::ostream& operator<<(std::ostream& os, const CNFVariable& v);
+std::ostream& operator<<(std::ostream& os, const CNFLiteral& v);
 
 struct CNFClause {
-  std::vector<CNFVariable> vars;
+  std::vector<CNFLiteral> vars;
 };
 std::ostream& operator<<(std::ostream& os, const CNFClause& c);
 
@@ -25,9 +27,9 @@ class CNFFormula {
   public:
     CNFFormula(int num_vars, int num_clauses):num_vars(num_vars),
     clauses(build_random_clauses(num_vars, num_clauses)) {}
-    long AssignmentWeight(const VariableAssignment& ass);
+    std::pair<long, bool> AssignmentWeight(const VariableAssignment& ass) const;
     friend std::ostream& operator<<(std::ostream& os, const CNFFormula& cnf);
-    int NumVars() {return num_vars;}
+    int NumVars() const {return num_vars;}
   private:
     int num_vars;
     std::vector<CNFClause> clauses;
@@ -41,3 +43,4 @@ VariableAssignment RandomVariableAssignment(int k);
 std::ostream& PrintAssignment(std::ostream& os, const VariableAssignment& ass,
    int num_vars); 
 }  // namespace CNF
+#endif

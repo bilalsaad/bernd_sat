@@ -17,20 +17,25 @@ namespace CNF {
     }
   }  // namespace
 
-  long CNFFormula::AssignmentWeight(const VariableAssignment& ass) {
-    return std::accumulate(std::cbegin(clauses),
+  std::pair<long, bool> CNFFormula::AssignmentWeight(
+      const VariableAssignment& ass) const {
+    auto weight_and_num = std::accumulate(std::cbegin(clauses),
                            std::cend(clauses),
-                           0L,
+                           std::make_pair<long, int>(0L, 0),
                            [&] (auto&& acc, const CNFClause& clause) {
                                 if (check_clause(clause, ass)) {
-                                   return acc += clause_weight(clause);
+                                   acc.first+=clause_weight(clause);
+                                   ++acc.second;
+                                   return acc;
                                 } else return acc;
                            });
+    return {weight_and_num.first, weight_and_num.second == clauses.size()};
   }
 
   namespace {
     CNFClause random_CNS_clause(int num_vars) {
       CNFClause result;
+     do { 
       for (int var_id = 0; var_id < num_vars; ++var_id) {
         // Roll a dice to decide if to take this variable.
         if (util::random_real() < 0.5) {
@@ -38,6 +43,7 @@ namespace CNF {
           result.vars.emplace_back(var_id, util::random_real() < 0.5);
         }
       }
+     } while (result.vars.size() == 0);
       return result;
     }
 
@@ -49,7 +55,7 @@ namespace CNF {
     return result;
   }
 
-  std::ostream& operator<<(std::ostream& os, const CNFVariable& v) {
+  std::ostream& operator<<(std::ostream& os, const CNFLiteral& v) {
     os << "[" << (v.is_complement ? "!" : "") << "x_" << v.id << "]";
     return os;
   }
@@ -86,5 +92,4 @@ namespace CNF {
 
     return os;
   }
-
 } // namespace CNF
