@@ -43,6 +43,5 @@ namespace util {
   int get_int_flag(const std::string& fname);
   void parse_flags(int argc, char** argv);
   bool is_flag_set(const std::string& fname);
-
 } // namespace util.
 #endif

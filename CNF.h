@@ -4,6 +4,7 @@
 #include <functional>
 #include <ostream>
 #include <experimental/optional>
+#include <numeric>
 namespace CNF {
 struct CNFLiteral {
   bool is_complement;
@@ -23,7 +24,6 @@ std::vector<CNFClause> build_random_clauses(int num_vars, int num_clauses,
 
 using VariableAssignment = std::vector<bool>;
 
-
 class CNFFormula {
   public:
     CNFFormula(int num_vars, int num_clauses,
@@ -32,6 +32,16 @@ class CNFFormula {
     std::pair<long, bool> AssignmentWeight(const VariableAssignment& ass) const;
     friend std::ostream& operator<<(std::ostream& os, const CNFFormula& cnf);
     int NumVars() const {return num_vars;}
+    template <typename T, typename BinOp>
+    T AccumulateClauses(T&& init_elem, BinOp&& op) const {
+      return std::accumulate(std::begin(clauses),
+                             std::end(clauses),
+                             init_elem,
+                             op);
+    }
+    long GetClauseWeight(const CNFClause& clause) const {
+      return clause_weight(clause);
+    }
   private:
     int num_vars;
     std::vector<CNFClause> clauses;

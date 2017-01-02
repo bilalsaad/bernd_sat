@@ -7,5 +7,7 @@ namespace CNF {
 VariableAssignment LocalSearch(const CNFFormula& cnf_formula, int max_steps,
     bool verbose = false);
 VariableAssignment BruteForce(const CNFFormula&);
+
+VariableAssignment ConditionalExpectations(const CNFFormula& cnf_formula);
 }  // namespace CNF
 #endif

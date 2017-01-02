@@ -1,14 +1,15 @@
 #include "local-search.h"
+#include <cmath>
 
 namespace CNF {
 
-namespace {
-  void flip_variable(VariableAssignment& ass) {
-    std::srand(std::time(0));
-    int random_index = std::rand() % ass.size();
-    ass[random_index] = !ass[random_index];
-  }
-}  // namespace
+  namespace {
+    void flip_variable(VariableAssignment& ass) {
+      std::srand(std::time(0));
+      int random_index = std::rand() % ass.size();
+      ass[random_index] = !ass[random_index];
+    }
+  }  // namespace
   VariableAssignment LocalSearch(const CNFFormula& cnf_formula, int max_steps,
       bool verbose) {
     auto result = RandomVariableAssignment(cnf_formula.NumVars());
@@ -35,29 +36,68 @@ namespace {
     return result;
   }
 
-namespace {
-
-  VariableAssignment brute_force_helper(VariableAssignment& ass,
-      const CNFFormula& cnf_formula, int i) {
-    if (i == cnf_formula.NumVars()) {
-      return ass;
+  namespace {
+    VariableAssignment brute_force_helper(VariableAssignment& ass,
+        const CNFFormula& cnf_formula, int i) {
+      if (i == cnf_formula.NumVars()) {
+        return ass;
+      }
+      auto ass_i_true = ass;
+      ass_i_true[i] = true;
+      ass_i_true = brute_force_helper(ass_i_true, cnf_formula, i + 1);
+      auto ass_i_false = ass;
+      ass_i_false[i] = false;
+      ass_i_false = brute_force_helper(ass_i_false, cnf_formula, i + 1);
+      return cnf_formula.AssignmentWeight(ass_i_true).first >
+        cnf_formula.AssignmentWeight(ass_i_false).first ?
+        ass_i_true : ass_i_false;
     }
-    auto ass_i_true = ass;
-    ass_i_true[i] = true;
-    ass_i_true = brute_force_helper(ass_i_true, cnf_formula, i + 1);
-    auto ass_i_false = ass;
-    ass_i_false[i] = false;
-    ass_i_false = brute_force_helper(ass_i_false, cnf_formula, i + 1);
-    return cnf_formula.AssignmentWeight(ass_i_true).first >
-           cnf_formula.AssignmentWeight(ass_i_false).first ?
-           ass_i_true : ass_i_false;
-  }
 
-}  // namespace
+  }  // namespace
   VariableAssignment BruteForce(const CNFFormula& cnf_formula) {
     VariableAssignment res(cnf_formula.NumVars(), false);
     return brute_force_helper(res, cnf_formula, 0);
   }
 
-
+  namespace {
+    // We want to calculate $E[W| ass].
+    // This is the sum over all clauses in the cnf formula f,
+    // Sum(j) where each Ci -> 
+    double conditional_expectation(const CNFFormula& f,
+        const std::vector<bool>& ass) {
+      auto prob_clause_satisfied = [&ass] (const auto& clause) -> double {
+        // number of variables in clause and not in the partial assignment
+        int k = 0;
+        // This checks if the clause is satisfied by the partial assignment.
+        for (const auto& lit : clause.vars) {
+          if (lit.id < ass.size() && ass[lit.id] != lit.is_complement) {
+            return 1.0;
+          } else if (lit.id >= ass.size()) {
+            ++k;
+          }
+        } 
+        // Now we need to compute 1 - (1/2) ^ k 
+        return 1.0 - std::pow(0.5, k);
+      }; 
+      return f.AccumulateClauses(0L,
+          [&f, &prob_clause_satisfied] (double acc, const auto& clause) {
+          return acc +=
+                 f.GetClauseWeight(clause) * prob_clause_satisfied(clause);
+          });
+    }
+  }  // namespace
+  VariableAssignment ConditionalExpectations(const CNFFormula& cnf_formula) {
+    VariableAssignment result;
+    for (int i = 0; i < cnf_formula.NumVars(); ++i) {
+      // try with ith variable true.
+      result.push_back(true);
+      auto expected_weight_true = conditional_expectation(cnf_formula, result);
+      // now try with false.
+      result[result.size()-1] = false;
+      auto expected_weight_false = conditional_expectation(cnf_formula, result);
+      if (expected_weight_true > expected_weight_false)
+        result[result.size()-1] = true;
+    }
+    return result;
+  }
 }  // namespace CNF
