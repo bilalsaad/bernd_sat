@@ -12,27 +12,40 @@ void init(int argc, char** argv) {
   util::add_bool_flag("verbose", "print the CNF formula", false);
   util::add_int_flag("seed", "a random seed to reproduce cnf formulas", 1337);
   util::add_bool_flag("use_seed", "use seed ", false);
+  util::add_int_flag("n_test_runs" , "how many test runs", 10000);
+  util::add_int_flag("switch_brute_force", "when to switch to brute force ", 5);
   util::parse_flags(argc, argv);
+}
+
+template<typename SatSolverA, typename SatSolverB>
+auto compare_sat_solvers(SatSolverA&& A, SatSolverB&& B,
+    const CNFFormula& cnf_formula) {
+  auto assignment_A = A(cnf_formula);
+  auto assignment_B = B(cnf_formula);
+  return cnf_formula.AssignmentWeight(assignment_A).first -
+    cnf_formula.AssignmentWeight(assignment_B).first; 
+}
+
+template<typename SatSolverA, typename SatSolverB >
+void CompareSolvers(SatSolverA&& A, SatSolverB&& B) {
+  double running_difference = 0;
+  int num_runs = util::get_int_flag("n_test_runs");
+  for (int i = 0; i < num_runs; ++i) {
+    CNFFormula f(util::get_int_flag("n_vars"), util::get_int_flag("n_clauses"));
+    running_difference += compare_sat_solvers(A, B, f);
+  }
+  std::cout << "Average difference over " << num_runs << " runs is " <<
+    running_difference / double(num_runs) << std::endl;
 }
 
 int main(int argc, char** argv) {
   init(argc, argv);
-  CNFFormula f(util::get_int_flag("n_vars"), util::get_int_flag("n_clauses"),
-      util::get_bool_flag("use_seed") ?
-      optional<int>(util::get_int_flag("seed")) :
-        optional<int>());
-  auto ass2 = LocalSearch(f, util::get_int_flag("local_steps"));
-  auto ass4 = ConditionalExpectations(f);
-  if (util::get_bool_flag("verbose")) {
-    //std::cout << "cnf formula: \n" << f;
-    PrintAssignment(std::cout << "conditional ", ass4, ass4.size());
-    PrintAssignment(std::cout << "LocalSearch ", ass2, ass2.size());
-  }
-  //std::cout << "bruteforce: " << f.AssignmentWeight(ass3).first << std::endl;
-  auto local_weight = f.AssignmentWeight(ass2).first;
-  auto cond_weight = f.AssignmentWeight(ass4).first;
-  std::cout << "Local: " << local_weight << std::endl;
-  std::cout << "Conditional: " << cond_weight << std::endl;
-  std::cout << "cond - local: " << cond_weight - local_weight << std::endl;
+  auto local_search =
+    [num_steps = util::get_int_flag("local_steps")] (const auto& formula) { 
+      return LocalSearch(formula, num_steps);};
+  auto cond_expect = [] (const auto& f) { return ConditionalExpectations(f);};
+  auto brute_solver = [] (const auto& f) { return BruteForce(f);};
+  auto cond_opt_to_brute = [] (const auto& f) { return FinishWithBrute(f); };
+  CompareSolvers(cond_expect, local_search);
   return 0;
 }

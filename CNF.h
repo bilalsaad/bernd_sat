@@ -39,6 +39,7 @@ class CNFFormula {
                              init_elem,
                              op);
     }
+
     long GetClauseWeight(const CNFClause& clause) const {
       return clause_weight(clause);
     }

@@ -13,10 +13,9 @@ namespace CNF {
   VariableAssignment LocalSearch(const CNFFormula& cnf_formula, int max_steps,
       bool verbose) {
     auto result = RandomVariableAssignment(cnf_formula.NumVars());
-    //VariableAssignment result(cnf_formula.NumVars(), false);
     auto temp_result = result;
     auto best_val = cnf_formula.AssignmentWeight(result);
-    auto first_score = best_val.first;
+    const auto first_score = best_val.first;
     for (int i = 0; i < max_steps; ++i) {
       auto temp_val = cnf_formula.AssignmentWeight(temp_result);
       if (temp_val.first > best_val.first) {
@@ -79,13 +78,14 @@ namespace CNF {
         // Now we need to compute 1 - (1/2) ^ k 
         return 1.0 - std::pow(0.5, k);
       }; 
-      return f.AccumulateClauses(0L,
+      return f.AccumulateClauses(0.0,
           [&f, &prob_clause_satisfied] (double acc, const auto& clause) {
           return acc +=
                  f.GetClauseWeight(clause) * prob_clause_satisfied(clause);
           });
     }
   }  // namespace
+
   VariableAssignment ConditionalExpectations(const CNFFormula& cnf_formula) {
     VariableAssignment result;
     for (int i = 0; i < cnf_formula.NumVars(); ++i) {
@@ -99,5 +99,12 @@ namespace CNF {
         result[result.size()-1] = true;
     }
     return result;
+  }
+
+  VariableAssignment FinishWithBrute(const CNFFormula& cnf_formula,
+      int switch_to_brute) {
+    auto brute_index = std::max(0, cnf_formula.NumVars() - switch_to_brute);
+    auto result = ConditionalExpectations(cnf_formula);
+    return brute_force_helper(result, cnf_formula, brute_index);
   }
 }  // namespace CNF
