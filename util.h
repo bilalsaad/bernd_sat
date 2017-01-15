@@ -7,6 +7,7 @@
 #include <cassert>
 #include <unordered_map>
 #include <experimental/optional>
+#include "json.hpp"
 namespace util {
   using Clock = std::chrono::high_resolution_clock;
   using std::chrono::time_point;
@@ -43,5 +44,27 @@ namespace util {
   int get_int_flag(const std::string& fname);
   void parse_flags(int argc, char** argv);
   bool is_flag_set(const std::string& fname);
+
+
+  // Stuff for experiments.
+  struct experiment_info {
+    int num_vars = 1;
+    int num_clauses = 1;
+    int how_many_runs = 100;
+
+    operator nlohmann::json(){
+      nlohmann::json j;
+      j["num_vars"] = num_vars;
+      j["num_clauses"] = num_clauses;
+      j["how_many_runs"] = how_many_runs;
+      return j;
+    }
+    experiment_info(const nlohmann::json& j):
+      num_vars(j["num_vars"]),
+      num_clauses(j["num_clauses"]),
+      how_many_runs(j["how_many_runs"]) {}
+
+    experiment_info() : num_vars(0), num_clauses(0), how_many_runs(0) {}
+  };
 } // namespace util.
 #endif

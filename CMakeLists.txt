@@ -19,6 +19,12 @@ file(GLOB SOURCES "${PROJECT_SOURCE_DIR}/*.cc")
 # set for cpp14
 set(CMAKE_CXX_STANDARD 14)
 
+#json library
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/Cellar/nlohmann_json/2.0.10/include")
+
+#optimize
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+
 # compile rule
 add_executable(benrd-sat "${SOURCES}")
 
