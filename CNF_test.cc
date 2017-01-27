@@ -45,8 +45,8 @@ void CompareSolvers(SatSolverA&& A, SatSolverB&& B) {
     running_difference / double(num_runs) << std::endl;
 }
 
-void create_experiments_file() {
-  std::vector<util::experiment_info> experiments(500);
+void create_experiments_file(int var_inc = 2) {
+  std::vector<util::experiment_info> experiments(1);
   int num_vars = 2;
   int num_clauses = util::get_int_flag("n_clauses");;
 
@@ -54,7 +54,7 @@ void create_experiments_file() {
     exp.num_vars = num_vars;
     exp.num_clauses = num_clauses;
     exp.how_many_runs = 100;
-    ++num_vars;
+    num_vars += var_inc;
   }
   std::vector<json> jsons;
   std::transform(std::begin(experiments), std::end(experiments),
@@ -116,11 +116,11 @@ int main(int argc, char** argv) {
     create_experiments_file();
   }
   std::thread t1([&] ()
-      {CreateSolverJSONReport(cond_expect, "ConditionalExpectation3");});
+      {CreateSolverJSONReport(cond_expect, "aConditionalExpectation4");});
   std::thread t2 ([&] ()
-      {CreateSolverJSONReport(local_search, "LocalSearch3");});
+      {CreateSolverJSONReport(local_search, "bLocalSearch4");});
   std::thread t3 ([&] () {
-      CreateSolverJSONReport(cond_opt_to_brute, "ConditionalExpectationBrute3");
+      CreateSolverJSONReport(cond_opt_to_brute, "cConditionalExpectationBrute4");
       });
   t1.join();
   t2.join();

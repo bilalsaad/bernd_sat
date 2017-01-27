@@ -40,7 +40,7 @@ namespace CNF {
      do { 
       for (int var_id = 0; var_id < num_vars; ++var_id) {
         // Roll a dice to decide if to take this variable.
-        if (util::random_real(seed) < 0.5) {
+        if (util::random_real(seed) < double(3) / double(num_vars)) {
           // Roll a dice to decide if to take this variable or its complement.
           result.vars.emplace_back(var_id, util::random_real(seed) < 0.5);
         }
