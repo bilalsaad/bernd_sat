@@ -16,7 +16,7 @@ void init(int argc, char** argv) {
   util::add_int_flag("seed", "a random seed to reproduce cnf formulas", 1337);
   util::add_bool_flag("use_seed", "use seed ", false);
   util::add_int_flag("n_test_runs" , "how many test runs", 10000);
-  util::add_int_flag("switch_brute_force", "when to switch to brute force ", 5);
+  util::add_int_flag("switch_brute_force", "when to switch to brute force ", 7);
   util::add_string_flag("experiments_file", "the file to use for creating"
       "reports", "out/experiments.json");
   util::add_bool_flag("create_experiments_file", "run create_experiments_file",
@@ -46,8 +46,8 @@ void CompareSolvers(SatSolverA&& A, SatSolverB&& B) {
 }
 
 void create_experiments_file(int var_inc = 2) {
-  std::vector<util::experiment_info> experiments(1);
-  int num_vars = 2;
+  std::vector<util::experiment_info> experiments(50);
+  int num_vars = 100;
   int num_clauses = util::get_int_flag("n_clauses");;
 
   for (auto& exp : experiments) {
@@ -116,11 +116,11 @@ int main(int argc, char** argv) {
     create_experiments_file();
   }
   std::thread t1([&] ()
-      {CreateSolverJSONReport(cond_expect, "aConditionalExpectation4");});
+      {CreateSolverJSONReport(cond_expect, "CondExpectTypeB2");});
   std::thread t2 ([&] ()
-      {CreateSolverJSONReport(local_search, "bLocalSearch4");});
+      { CreateSolverJSONReport(local_search, "LocalSearhTypeB2");});
   std::thread t3 ([&] () {
-      CreateSolverJSONReport(cond_opt_to_brute, "cConditionalExpectationBrute4");
+      CreateSolverJSONReport(cond_opt_to_brute, "ShortCircuitTypeB");
       });
   t1.join();
   t2.join();

@@ -39,7 +39,10 @@ namespace util {
       std::string default_val);
   void add_bool_flag(const std::string& flagname, const std::string& desc,
       bool default_val);
+  void add_double_flag(const std::string& flagname, const std::string& desc,
+      double default_val);
   bool get_bool_flag(const std::string& fname);
+  double get_double_flag(const std::string& fname);
   std::string get_string_flag(const std::string& fname);
   int get_int_flag(const std::string& fname);
   void parse_flags(int argc, char** argv);
