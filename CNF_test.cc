@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <thread>
+#include <future>
 
 using namespace CNF;
 using std::experimental::optional;
@@ -21,6 +22,13 @@ void init(int argc, char** argv) {
       "reports", "out/experiments.json");
   util::add_bool_flag("create_experiments_file", "run create_experiments_file",
       false);
+  util::add_string_flag("run_config", "what to run", "in/config.json");
+  util::add_string_flag("report_suffix" ,
+      "suffix of reports created by this run",
+      "300");
+  util::add_int_flag("picking_variable" , "how to pick variables "
+      " if less then 1 we pick with probability 1/2 else picking_variable/n "
+      "where n is the number of variables in the cnf clause", 3);
   util::parse_flags(argc, argv);
 }
 
@@ -104,26 +112,133 @@ void CreateSolverJSONReport(Solver&& A, const std::string& report_prefix) {
   output_file << "]" << std::endl;
 }
 
+json get_config_file(const std::string& fname) {
+  std::ifstream experiments(fname);
+  json j;
+  experiments >> j;
+  return j;
+}
+
+enum class AlgorithmType {
+  LOCAL,
+  COND,
+  SHORTCIRCUIT,
+};
+
+struct ExperimentArgs {
+  int num_runs;
+  int num_clauses;
+  int num_vars;
+  std::string alg_type;
+
+  
+  // Optional fields for some algorithms.
+
+  // For local search.
+  int num_steps = -1;
+
+  // For the short circuiting alg
+  int shortcircuit = -1;
+ 
+  ExperimentArgs(const json& args): num_runs(args["num_runs"]),
+  num_clauses(args["num_clauses"]), num_vars(args["num_vars"]) {
+    num_steps = args.count("num_steps") ? int(args["num_steps"]) : -1;
+    shortcircuit = args.count("shortcircuit") ? int(args["shortcircuit"]) : -1;
+    alg_type = args["algorithm"]; 
+  }
+};
+
+template<typename Solver>
+json RunExperiment(Solver&& solver, const ExperimentArgs& args) {
+  long sum = 0L;
+  for (int i = 0; i < args.num_runs; ++i) {
+    CNFFormula f(args.num_vars, args.num_clauses);
+    sum += f.AssignmentWeight(solver(f)).first;
+  } 
+  double result = double(sum) / double(args.num_runs);
+  json result_json;
+  result_json["num_vars"] = args.num_vars;
+  result_json["num_clauses"] = args.num_clauses;
+  result_json["average_result"] = result;
+  result_json["algorithm"] = args.alg_type;
+  return result_json;
+}
+
+class Experimentor {
+  public:
+    json operator()(const ExperimentArgs& args) {
+      return func(args);
+    };
+    // Creates an Experimentor object, that once called will conduct on the
+    // correct experiment according to 'alg_type' and 'exp_type'.
+    static Experimentor CreateExperimentor(AlgorithmType alg_type) {
+      static std::unordered_map<AlgorithmType, f_type> func_map =
+      { 
+        {AlgorithmType::LOCAL,
+          [] (const ExperimentArgs& args) -> json { 
+            return  RunExperiment([steps = args.num_steps] (auto&& formula) {
+                return LocalSearch(formula, steps);}, args);
+          }}, 
+        {AlgorithmType::COND,
+          [] (const ExperimentArgs& args) -> json { 
+            return  RunExperiment([](auto&& formula) {
+                return ConditionalExpectations(formula);}, args);
+          }}, 
+        {AlgorithmType::SHORTCIRCUIT,
+          [] (const ExperimentArgs& args) -> json { 
+            return  RunExperiment([k = args.shortcircuit](auto&& formula) {
+                return ConditionalExpectations(formula);}, args);
+          }}, 
+      };
+      return func_map[alg_type];
+    }
+  private:
+    using f_type = std::function<json(const ExperimentArgs& args)>;
+    Experimentor(f_type f): func(f) {}
+    f_type func;
+};
+
+AlgorithmType TypeFromString(const std::string& type) {
+  constexpr char kLocal[] = "LocalSearch";
+  constexpr char kCond[] = "Cond";
+  constexpr char kShortC[] = "ShortCircuit";
+  if (type == kLocal)
+    return AlgorithmType::LOCAL;
+  if (type == kCond)
+    return AlgorithmType::COND;
+  if (type == kShortC) 
+    return AlgorithmType::SHORTCIRCUIT;
+
+  std::cout << "Invalid experiment algorithm must be " << kLocal << " or "
+    << kCond << " or " << kShortC;
+  assert(false);
+}
+
+void ConductExperiments(const json& experiments,
+    const std::string& report_suffix) {
+  std::vector<std::future<json>> futures(experiments.size());
+  for (int i = 0; i < futures.size(); ++i) {
+    ExperimentArgs args(experiments[i]);
+    auto alg_type = TypeFromString(experiments[i]["algorithm"]);
+    auto exp_func = Experimentor::CreateExperimentor(alg_type);
+    futures[i] = std::async(exp_func, args);
+  }
+
+  std::ofstream outfile(
+      "out/Report_" + report_suffix + ".json"); 
+  outfile << "[";
+  std::string separator = "";
+  for (auto& f : futures) {
+    auto res = f.get();
+    outfile << separator << std::endl << std::setw(4) << res;
+    separator = ",";
+  }
+  outfile << "]";
+}
+
 int main(int argc, char** argv) {
   init(argc, argv);
-  auto local_search =
-    [num_steps = util::get_int_flag("local_steps")] (const auto& formula) { 
-      return LocalSearch(formula, num_steps);};
-  auto cond_expect = [] (const auto& f) { return ConditionalExpectations(f);};
-  auto brute_solver = [] (const auto& f) { return BruteForce(f);};
-  auto cond_opt_to_brute = [] (const auto& f) { return FinishWithBrute(f); };
-  if (util::get_bool_flag("create_experiments_file")) {
-    create_experiments_file();
-  }
-  std::thread t1([&] ()
-      {CreateSolverJSONReport(cond_expect, "CondExpectTypeB2");});
-  std::thread t2 ([&] ()
-      { CreateSolverJSONReport(local_search, "LocalSearhTypeB2");});
-  std::thread t3 ([&] () {
-      CreateSolverJSONReport(cond_opt_to_brute, "ShortCircuitTypeB");
-      });
-  t1.join();
-  t2.join();
-  t3.join();
+  auto config = get_config_file(util::get_string_flag("run_config"));
+  ConductExperiments(config, util::get_string_flag("report_suffix"));
   return 0;
 }

@@ -35,12 +35,20 @@ namespace CNF {
   using std::experimental::optional;
 
   namespace {
+    bool pick_variable(const double& number, int num_vars) {
+      auto picking_variable = util::get_int_flag("picking_variable");
+      if (picking_variable > 0) {
+          return number < double(picking_variable) / double(num_vars); 
+      }
+      return number < 0.5; 
+    }
+
     CNFClause random_CNS_clause(int num_vars, optional<int> seed) {
       CNFClause result;
      do { 
       for (int var_id = 0; var_id < num_vars; ++var_id) {
         // Roll a dice to decide if to take this variable.
-        if (util::random_real(seed) < double(3) / double(num_vars)) {
+        if (pick_variable(util::random_real(seed), num_vars)) {
           // Roll a dice to decide if to take this variable or its complement.
           result.vars.emplace_back(var_id, util::random_real(seed) < 0.5);
         }
